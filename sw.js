@@ -1,6 +1,6 @@
 /* Service worker: precache everything, serve cache-first, so the app runs with the server offline.
    Bump CACHE whenever any file changes so phones pick up the new version. */
-const CACHE = 'bjt-v7';
+const CACHE = 'bjt-v9';
 const ASSETS = [
   './',
   './index.html',

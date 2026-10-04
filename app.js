@@ -22,6 +22,7 @@
     surrender: false,
     totals: true,
     betting: true,
+    playSplitAces: false, // house rule: hit/double/re-split after splitting aces
     startStack: 1000,
     categories: DEFAULT_CATS,
     threshMode: 'prob',
@@ -84,7 +85,7 @@
     return {
       canHit: !hand.splitAces,
       canDouble: two && !hand.splitAces && afford,
-      canSplit: pair && afford && game.hands.length < 4 && !(hand.cards[0].v === 11 && hand.fromSplit),
+      canSplit: pair && afford && game.hands.length < 4 && !(hand.cards[0].v === 11 && hand.fromSplit && !settings.playSplitAces),
       canSurrender: settings.surrender && two && game.hands.length === 1 && !hand.fromSplit,
     };
   }
@@ -287,7 +288,8 @@
       hand.surrendered = true;
       hand.done = true;
     } else if (a === 'P') {
-      const aces = hand.cards[0].v === 11;
+      // Standard rule: split aces get one card each. The house-rule setting lets you play them on.
+      const aces = hand.cards[0].v === 11 && !settings.playSplitAces;
       const second = hand.cards.pop();
       const h2 = newHand([second], { fromSplit: true, splitAces: aces, bet: hand.bet });
       if (bettingOn()) stack -= hand.bet;
@@ -418,10 +420,10 @@
     return el;
   }
 
-  function totalText(cards) {
+  function totalText(cards, fromSplit) {
     const { total, soft } = hv(cards);
     if (total > 21) return `Bust ${total}`;
-    if (S.isBlackjack(val(cards))) return 'Blackjack';
+    if (S.isBlackjack(val(cards)) && !fromSplit) return 'Blackjack'; // A+10 after a split is just 21
     return (soft && total < 21 ? 'Soft ' : '') + total;
   }
 
@@ -454,7 +456,7 @@
       head.className = 'zone-head';
       const name = game.hands.length > 1 ? `Hand ${i + 1}` : 'You';
       let extra = '';
-      if (settings.totals) extra += `<span class="total">${totalText(h.cards)}</span>`;
+      if (settings.totals) extra += `<span class="total">${totalText(h.cards, h.fromSplit)}</span>`;
       if (bettingOn()) extra += `<span class="total bet">${money(h.bet)}</span>`;
       else if (h.doubled) extra += '<span class="total">×2</span>';
       if (h.result) {
@@ -588,6 +590,7 @@
     $('optSurrender').checked = settings.surrender;
     $('optTotals').checked = settings.totals;
     $('optBankroll').checked = settings.betting;
+    $('optSplitAces').checked = settings.playSplitAces;
     $('startStack').value = String(settings.startStack);
     $('optWeak').checked = settings.weakest;
     $('drillSettings').style.display = settings.mode === 'full' ? 'none' : '';
@@ -756,6 +759,7 @@
       settings.surrender = e.target.checked;
       saveSettings(); refilter(); resetGameForSettings(); renderSetup();
     };
+    $('optSplitAces').onchange = (e) => { settings.playSplitAces = e.target.checked; saveSettings(); resetGameForSettings(); };
     $('optTotals').onchange = (e) => { settings.totals = e.target.checked; saveSettings(); };
     $('optBankroll').onchange = (e) => { settings.betting = e.target.checked; saveSettings(); render(); };
     $('startStack').onchange = (e) => { settings.startStack = Number(e.target.value); saveSettings(); };

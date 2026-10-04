@@ -4,6 +4,7 @@ An offline-capable iPhone PWA for drilling perfect basic strategy, built around 
 
 Rules: 6 decks, dealer hits soft 17, dealer peeks, blackjack pays 3:2, double on any two cards,
 double after split, re-split to 4 hands (aces once, one card each), optional late surrender.
+Optional house rule: hit, double and re-split after splitting aces.
 
 ## Modes
 - **Full game**: a shuffled 6-deck shoe with real frequencies. Every decision is scored.
