@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Trainer Tests</title>
+  <style>
+    body { background: #0b3d2a; color: #f4f1e8; font: 15px/1.45 -apple-system, system-ui, sans-serif; margin: 0; padding: 16px; padding-top: calc(env(safe-area-inset-top, 0px) + 16px); }
+    h1 { font-size: 20px; color: #e8c46a; }
+    .r { padding: 10px 12px; border-radius: 10px; margin: 6px 0; background: rgba(0,0,0,.28); }
+    .ok b { color: #3ccf7e; } .bad b { color: #ff8a8d; }
+    .m { color: #a9c4b6; font-size: 13px; }
+    a { color: #e8c46a; }
+    #sum { font-size: 18px; font-weight: 700; margin: 12px 0; }
+  </style>
+</head>
+<body>
+  <h1>Strategy &amp; generator tests</h1>
+  <div id="sum">Running…</div>
+  <div id="out"></div>
+  <p><a href="./">← Back to the trainer</a></p>
+  <script src="strategy.js"></script>
+  <script src="generator.js"></script>
+  <script src="tests.js"></script>
+  <script>
+    fetch('strategy-odds.json').then((r) => r.json()).then((odds) => {
+      const res = BJTests.run(BJStrategy, BJGenerator, odds);
+      const failed = res.filter((r) => !r.ok).length;
+      document.getElementById('sum').textContent = `${res.length - failed}/${res.length} passed`;
+      document.getElementById('out').innerHTML = res.map((r) =>
+        `<div class="r ${r.ok ? 'ok' : 'bad'}"><b>${r.ok ? 'PASS' : 'FAIL'}</b> ${r.name}${r.msg ? `<div class="m">${r.msg}</div>` : ''}</div>`).join('');
+    });
+  </script>
+</body>
+</html>

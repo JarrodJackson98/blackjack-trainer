@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0b3d2a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BJ Trainer">
+  <title>Blackjack Trainer</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Blackjack Trainer</div>
+    <div class="topbar-right">
+      <span id="modePill" class="pill"></span>
+      <span id="bankroll" class="pill bank" hidden></span>
+    </div>
+  </header>
+
+  <main>
+    <!-- PLAY -->
+    <section id="screen-play" class="screen active">
+      <div class="table">
+        <div class="zone dealer">
+          <div class="zone-head"><span>Dealer</span><span id="dealerTotal" class="total"></span></div>
+          <div id="dealerCards" class="cards"></div>
+        </div>
+
+        <div id="situation" class="situation"></div>
+
+        <div class="zone player">
+          <div id="hands" class="hands"></div>
+        </div>
+
+        <div id="message" class="message">Tap Deal to start</div>
+      </div>
+
+      <div class="controls">
+        <div class="actions" id="actions">
+          <button class="act" data-a="H">Hit</button>
+          <button class="act" data-a="S">Stand</button>
+          <button class="act" data-a="D">Double</button>
+          <button class="act" data-a="P">Split</button>
+          <button class="act" data-a="R">Surrender</button>
+        </div>
+        <div class="aux">
+          <button id="hintBtn" class="aux-btn">💡 Hint</button>
+          <button id="chartBtn" class="aux-btn">▦ Chart</button>
+          <button id="dealBtn" class="aux-btn primary">Deal</button>
+        </div>
+      </div>
+
+      <div id="sheet" class="sheet" hidden>
+        <div id="sheetTitle" class="sheet-title"></div>
+        <div id="sheetBody" class="sheet-body"></div>
+        <div id="sheetButtons" class="sheet-buttons"></div>
+      </div>
+    </section>
+
+    <!-- SETUP -->
+    <section id="screen-setup" class="screen">
+      <h2>Mode</h2>
+      <div class="seg" id="modeSeg">
+        <button data-mode="full">Full game</button>
+        <button data-mode="drill">Edge drill</button>
+        <button data-mode="quiz">Quick quiz</button>
+      </div>
+      <p class="hint-text" id="modeDesc"></p>
+
+      <h2>Rules</h2>
+      <div class="card-box">
+        <div class="rules-line">6 decks · Dealer hits soft 17 · Peek · BJ pays 3:2 · DAS · Re-split to 4 hands</div>
+        <label class="toggle"><span>Late surrender</span><input type="checkbox" id="optSurrender"><i></i></label>
+        <label class="toggle"><span>Show hand totals</span><input type="checkbox" id="optTotals"><i></i></label>
+        <label class="toggle"><span>Bankroll (just for fun)</span><input type="checkbox" id="optBankroll"><i></i></label>
+      </div>
+
+      <div id="drillSettings">
+        <h2>Situations</h2>
+        <div class="card-box" id="catList"></div>
+
+        <h2>Rare hand filter</h2>
+        <div class="card-box">
+          <div class="seg small" id="threshSeg">
+            <button data-tm="prob">Probability</button>
+            <button data-tm="pct">Percentile</button>
+          </div>
+          <input type="range" id="threshSlider" min="0" max="1000" step="1">
+          <div class="slider-ends"><span id="sliderMin"></span><span id="sliderMax"></span></div>
+          <div class="readout">
+            <div><span class="big" id="threshValue"></span><span class="sub" id="threshSub"></span></div>
+            <div class="sub" id="eligibleCount"></div>
+          </div>
+          <div class="preview-head">Most common still included</div>
+          <ol id="preview" class="preview"></ol>
+          <p id="noMatch" class="warn" hidden>No hands match. Raise the threshold or select more categories.</p>
+        </div>
+
+        <h2>Weighting</h2>
+        <div class="card-box">
+          <div class="seg small" id="weightSeg">
+            <button data-w="uniform">Uniform</button>
+            <button data-w="natural">Natural</button>
+          </div>
+          <p class="hint-text" id="weightDesc"></p>
+          <label class="toggle"><span>Weakest spots (favour my mistakes)</span><input type="checkbox" id="optWeak"><i></i></label>
+        </div>
+      </div>
+      <p class="foot">Works offline once loaded · <a href="tests.html">Run tests</a></p>
+    </section>
+
+    <!-- ODDS -->
+    <section id="screen-odds" class="screen">
+      <h2>Hand odds</h2>
+      <p class="hint-text">Exact chance of each starting situation being dealt from a 6-deck shoe. Multi-card odds assume you've played correctly to get there.</p>
+      <div class="odds-controls">
+        <select id="oddsCat"></select>
+        <button id="oddsSort" class="aux-btn small"></button>
+      </div>
+      <div class="odds-legend"><span class="dot on"></span> in your current drill filter</div>
+      <div id="oddsList" class="odds-list"></div>
+      <button id="oddsMore" class="aux-btn wide" hidden>Show more</button>
+    </section>
+
+    <!-- STATS -->
+    <section id="screen-stats" class="screen">
+      <h2>Stats</h2>
+      <div class="tiles" id="tiles"></div>
+      <h2>By category</h2>
+      <div class="card-box" id="catStats"></div>
+      <h2>Most missed</h2>
+      <div class="card-box" id="missed"></div>
+      <button id="resetStats" class="aux-btn wide danger">Reset stats</button>
+    </section>
+  </main>
+
+  <nav class="tabs">
+    <button data-screen="play" class="active"><span>♠</span>Play</button>
+    <button data-screen="setup"><span>⚙</span>Setup</button>
+    <button data-screen="odds"><span>%</span>Odds</button>
+    <button data-screen="stats"><span>▤</span>Stats</button>
+  </nav>
+
+  <div id="chartModal" class="modal" hidden>
+    <div class="modal-inner">
+      <div class="modal-head"><span>Strategy chart</span><button id="chartClose" class="x">✕</button></div>
+      <div class="chart-key">
+        <span class="k H">H Hit</span><span class="k S">S Stand</span><span class="k D">D Double</span>
+        <span class="k Ds">Ds Dbl/Stand</span><span class="k P">P Split</span><span class="k R">R Surrender</span>
+      </div>
+      <div id="chartBody"></div>
+    </div>
+  </div>
+
+  <script src="strategy.js"></script>
+  <script src="generator.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
