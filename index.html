@@ -42,6 +42,17 @@
       </div>
 
       <div class="controls">
+        <div class="chips" id="chips" hidden>
+          <div id="betLine" class="betline"></div>
+          <div class="chip-row">
+            <button class="chip c5" data-chip="5">5</button>
+            <button class="chip c25" data-chip="25">25</button>
+            <button class="chip c100" data-chip="100">100</button>
+            <button class="chip c500" data-chip="500">500</button>
+            <button id="chipClear" class="chip-clear">Clear</button>
+            <button id="rebuy" class="chip-clear rebuy" hidden>Rebuy</button>
+          </div>
+        </div>
         <div class="actions" id="actions">
           <button class="act" data-a="H">Hit</button>
           <button class="act" data-a="S">Stand</button>
@@ -78,7 +89,15 @@
         <div class="rules-line">6 decks · Dealer hits soft 17 · Peek · BJ pays 3:2 · DAS · Re-split to 4 hands</div>
         <label class="toggle"><span>Late surrender</span><input type="checkbox" id="optSurrender"><i></i></label>
         <label class="toggle"><span>Show hand totals</span><input type="checkbox" id="optTotals"><i></i></label>
-        <label class="toggle"><span>Bankroll (just for fun)</span><input type="checkbox" id="optBankroll"><i></i></label>
+        <label class="toggle"><span>Stack &amp; betting</span><input type="checkbox" id="optBankroll"><i></i></label>
+        <div class="toggle">
+          <span>Starting stack</span>
+          <select id="startStack" class="mini-select">
+            <option value="500">$500</option><option value="1000">$1,000</option>
+            <option value="5000">$5,000</option><option value="10000">$10,000</option>
+          </select>
+        </div>
+        <div class="toggle"><span class="sub">Rebuy resets your stack to the starting amount</span><button id="rebuyBtn" class="aux-btn small">Rebuy</button></div>
       </div>
 
       <div id="drillSettings">

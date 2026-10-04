@@ -10,6 +10,14 @@ double after split, re-split to 4 hands (aces once, one card each), optional lat
 - **Edge drill**: only the situations you select, filtered by rarity, played out from the deal.
 - **Quick quiz**: a situation and an upcard. Tap an action and get instant feedback. No play-out.
 
+## Stack & betting
+On by default in Full game and Edge drill (Quick quiz has no play-out, so no bets). Between hands the
+action buttons become chips: tap $5 / $25 / $100 / $500 to build your bet, and it carries over to
+the next hand. Bets come off your stack when the hand is dealt. Doubling and splitting need enough
+left to match the bet; if you can't cover it, the button disappears and the strategy hint falls back
+to the next-best legal play. Blackjack pays 3:2, surrender returns half. Pick a starting stack and
+Rebuy in Setup (or tap Rebuy when you're out of chips).
+
 ## Rare Hand Generation Filter
 A Weighted RNG Card Generator controlled by a Dynamic Probability Threshold Slider.
 - `strategy-odds.json` is the **Pre-calculated Hand Odds Matrix**. It has 540 two-card situations

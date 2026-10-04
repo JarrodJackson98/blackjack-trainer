@@ -21,7 +21,8 @@
     mode: 'drill',
     surrender: false,
     totals: true,
-    bankroll: false,
+    betting: true,
+    startStack: 1000,
     categories: DEFAULT_CATS,
     threshMode: 'prob',
     threshold: 1, // probability; clamped to the slider range
@@ -33,8 +34,13 @@
 
   const stats = Object.assign({ byKey: {}, streak: 0, best: 0 }, store.get('bjt.stats', {}));
   const saveStats = () => store.set('bjt.stats', stats);
-  let bankroll = store.get('bjt.bankroll', 1000);
-  const BET = 10;
+  delete settings.bankroll; // replaced by `betting`
+  const MIN_BET = 5;
+  let stack = store.get('bjt.stack', settings.startStack);
+  let betSize = store.get('bjt.bet', 25);
+  const saveMoney = () => { store.set('bjt.stack', stack); store.set('bjt.bet', betSize); };
+  const bettingOn = () => settings.betting && settings.mode !== 'quiz';
+  const money = (n) => '$' + n.toLocaleString('en-AU', Number.isInteger(n) ? {} : { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   // ---------- odds matrix ----------
   let rows = [];
@@ -74,10 +80,11 @@
     if (!hand) return {};
     const two = hand.cards.length === 2;
     const pair = two && hand.cards[0].v === hand.cards[1].v;
+    const afford = !bettingOn() || stack >= hand.bet; // doubling/splitting puts up another bet
     return {
       canHit: !hand.splitAces,
-      canDouble: two && !hand.splitAces,
-      canSplit: pair && game.hands.length < 4 && !(hand.cards[0].v === 11 && hand.fromSplit),
+      canDouble: two && !hand.splitAces && afford,
+      canSplit: pair && afford && game.hands.length < 4 && !(hand.cards[0].v === 11 && hand.fromSplit),
       canSurrender: settings.surrender && two && game.hands.length === 1 && !hand.fromSplit,
     };
   }
@@ -105,12 +112,32 @@
   }
 
   function newHand(cards, extra) {
-    return Object.assign({ cards, bet: BET, done: false, doubled: false, fromSplit: false, splitAces: false, surrendered: false, result: null }, extra);
+    return Object.assign({ cards, bet: game.stake, done: false, doubled: false, fromSplit: false, splitAces: false, surrendered: false, result: null }, extra);
   }
 
   async function deal() {
     if (game.busy) return;
     hideSheet();
+    if (settings.mode !== 'full' && !filterResult.eligible.length) {
+      setMessage('No hands match. Raise the threshold or select more categories.', 'bad');
+      return;
+    }
+    game.stake = 0;
+    if (bettingOn()) {
+      if (stack < MIN_BET) {
+        setMessage('Out of chips. Tap Rebuy to reload your stack.', 'bad');
+        render();
+        return;
+      }
+      if (betSize < MIN_BET) {
+        setMessage(`Place a bet first (min ${money(MIN_BET)})`, 'bad');
+        return;
+      }
+      // If the stack can't cover your bet, this hand goes all-in; your chosen bet is kept for later
+      game.stake = Math.min(betSize, Math.floor(stack / MIN_BET) * MIN_BET);
+      stack -= game.stake;
+      saveMoney();
+    }
     game.scored = false;
     game.hintUsed = false;
     setMessage('');
@@ -139,18 +166,16 @@
         game.holeHidden = false;
         settleBankroll();
         render();
-        setMessage(dealerBJ ? (playerBJ ? 'Both blackjack: push' : 'Dealer blackjack') : 'Blackjack! Pays 3:2', dealerBJ && !playerBJ ? 'bad' : 'good');
+        setMessage((dealerBJ ? (playerBJ ? 'Both blackjack: push' : 'Dealer blackjack') : 'Blackjack! Pays 3:2') + netText(), dealerBJ && !playerBJ ? 'bad' : 'good');
         return;
       }
     } else {
-      if (!filterResult.eligible.length) {
-        setMessage('No hands match. Raise the threshold or select more categories.', 'bad');
-        return;
-      }
       const missRate = settings.weakest ? missRateFn() : null;
       const row = G.pickSituation(filterResult.eligible, { weighting: settings.weighting, missRate, lastId: game.lastId });
       const d = G.dealSituation(row);
       if (!d) {
+        stack += game.stake;
+        saveMoney();
         setMessage('Could not deal that situation — try again', 'bad');
         return;
       }
@@ -253,6 +278,7 @@
     } else if (a === 'S') {
       hand.done = true;
     } else if (a === 'D') {
+      if (bettingOn()) stack -= hand.bet;
       hand.bet *= 2;
       hand.doubled = true;
       hand.cards.push(sh.draw());
@@ -263,7 +289,8 @@
     } else if (a === 'P') {
       const aces = hand.cards[0].v === 11;
       const second = hand.cards.pop();
-      const h2 = newHand([second], { fromSplit: true, splitAces: aces });
+      const h2 = newHand([second], { fromSplit: true, splitAces: aces, bet: hand.bet });
+      if (bettingOn()) stack -= hand.bet;
       hand.fromSplit = true;
       hand.splitAces = aces;
       game.hands.splice(game.active + 1, 0, h2);
@@ -336,19 +363,25 @@
     const wins = game.hands.filter((h) => h.result === 'win').length;
     const losses = game.hands.filter((h) => ['lose', 'bust', 'surrender'].includes(h.result)).length;
     const dTxt = d > 21 ? 'Dealer busts' : `Dealer ${d}`;
-    setMessage(`${dTxt} · ${wins} won, ${losses} lost`, wins > losses ? 'good' : wins < losses ? 'bad' : '');
+    setMessage(`${dTxt} · ${wins} won, ${losses} lost${netText()}`, wins > losses ? 'good' : wins < losses ? 'bad' : '');
   }
 
+  // Bets were taken off the stack when placed; pay back stake + winnings
+  const PAYOUT = { win: 2, blackjack: 2.5, push: 1, surrender: 0.5, lose: 0, bust: 0 };
   function settleBankroll() {
-    if (!settings.bankroll) return;
+    game.net = null;
+    if (!bettingOn()) return;
+    let back = 0, staked = 0;
     for (const h of game.hands) {
-      if (h.result === 'win') bankroll += h.bet;
-      else if (h.result === 'blackjack') bankroll += h.bet * 1.5;
-      else if (h.result === 'lose' || h.result === 'bust') bankroll -= h.bet;
-      else if (h.result === 'surrender') bankroll -= h.bet / 2;
+      back += h.bet * PAYOUT[h.result];
+      staked += h.bet;
     }
-    store.set('bjt.bankroll', bankroll);
+    stack += back;
+    game.net = back - staked;
+    saveMoney();
   }
+  const netText = () => (game.net === null || game.net === undefined ? ''
+    : game.net > 0 ? ` · +${money(game.net)}` : game.net < 0 ? ` · −${money(-game.net)}` : ' · even');
 
   function onHint() {
     if (game.phase !== 'player') {
@@ -422,7 +455,8 @@
       const name = game.hands.length > 1 ? `Hand ${i + 1}` : 'You';
       let extra = '';
       if (settings.totals) extra += `<span class="total">${totalText(h.cards)}</span>`;
-      if (h.doubled) extra += '<span class="total">×2</span>';
+      if (bettingOn()) extra += `<span class="total bet">${money(h.bet)}</span>`;
+      else if (h.doubled) extra += '<span class="total">×2</span>';
       if (h.result) {
         const [lab, cls] = RESULT_LABEL[h.result];
         extra += `<span class="result ${cls}">${lab}</span>`;
@@ -442,10 +476,22 @@
     const show = hand
       ? { H: l.canHit, S: true, D: l.canDouble, P: l.canSplit, R: l.canSurrender }
       : { H: true, S: true, D: false, P: false, R: false };
+    const betting = bettingOn() && (game.phase === 'idle' || game.phase === 'done');
+    $('actions').hidden = betting;
+    $('chips').hidden = !betting;
     document.querySelectorAll('.act').forEach((b) => {
       b.hidden = !show[b.dataset.a];
       b.disabled = !hand || game.busy;
     });
+    if (betting) {
+      const broke = stack < MIN_BET;
+      document.querySelectorAll('.chip').forEach((c) => (c.disabled = broke || betSize + Number(c.dataset.chip) > stack));
+      $('chipClear').hidden = broke;
+      $('rebuy').hidden = !broke;
+      const capped = Math.min(betSize, Math.floor(stack / MIN_BET) * MIN_BET);
+      $('betLine').innerHTML = broke ? 'Out of chips'
+        : capped < betSize ? `Bet <b>${money(capped)}</b> (all-in, your bet is ${money(betSize)})` : `Bet <b>${money(betSize)}</b>`;
+    }
     $('dealBtn').disabled = game.phase === 'player' || game.phase === 'dealer';
     $('dealBtn').textContent = game.phase === 'idle' ? 'Deal' : 'Next hand';
     $('hintBtn').disabled = game.phase !== 'player';
@@ -453,8 +499,8 @@
     // header
     $('modePill').textContent = { full: 'Full game', drill: 'Edge drill', quiz: 'Quick quiz' }[settings.mode];
     const bk = $('bankroll');
-    bk.hidden = !settings.bankroll;
-    bk.textContent = '$' + bankroll.toLocaleString('en-AU');
+    bk.hidden = !bettingOn();
+    bk.textContent = 'Stack ' + money(stack);
   }
 
   function setMessage(t, cls) {
@@ -541,7 +587,8 @@
     $('modeDesc').textContent = MODE_DESC[settings.mode];
     $('optSurrender').checked = settings.surrender;
     $('optTotals').checked = settings.totals;
-    $('optBankroll').checked = settings.bankroll;
+    $('optBankroll').checked = settings.betting;
+    $('startStack').value = String(settings.startStack);
     $('optWeak').checked = settings.weakest;
     $('drillSettings').style.display = settings.mode === 'full' ? 'none' : '';
 
@@ -710,7 +757,25 @@
       saveSettings(); refilter(); resetGameForSettings(); renderSetup();
     };
     $('optTotals').onchange = (e) => { settings.totals = e.target.checked; saveSettings(); };
-    $('optBankroll').onchange = (e) => { settings.bankroll = e.target.checked; saveSettings(); render(); };
+    $('optBankroll').onchange = (e) => { settings.betting = e.target.checked; saveSettings(); render(); };
+    $('startStack').onchange = (e) => { settings.startStack = Number(e.target.value); saveSettings(); };
+    const rebuy = () => {
+      if (game.phase === 'player' || game.phase === 'dealer') return;
+      stack = settings.startStack;
+      if (!betSize) betSize = 25;
+      saveMoney();
+      setMessage(`Stack reloaded to ${money(stack)}`, 'good');
+      render();
+    };
+    $('rebuyBtn').onclick = rebuy;
+    $('rebuy').onclick = rebuy;
+    document.querySelectorAll('.chip').forEach((c) => (c.onclick = () => {
+      const v = Number(c.dataset.chip);
+      if (betSize + v <= stack) betSize += v;
+      saveMoney();
+      render();
+    }));
+    $('chipClear').onclick = () => { betSize = 0; saveMoney(); render(); };
     $('optWeak').onchange = (e) => { settings.weakest = e.target.checked; saveSettings(); };
     document.querySelectorAll('#threshSeg button').forEach((b) => (b.onclick = () => {
       settings.threshMode = b.dataset.tm; saveSettings(); refilter(); renderFilter();
@@ -732,8 +797,6 @@
       if (!confirm('Reset all stats?')) return;
       stats.byKey = {}; stats.streak = 0; stats.best = 0;
       saveStats();
-      bankroll = 1000;
-      store.set('bjt.bankroll', bankroll);
       renderStats();
     };
   }

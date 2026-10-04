@@ -272,3 +272,30 @@ table.chart th.cur-col { color: var(--gold); }
 .zone-head span { white-space: nowrap; }
 .hands.multi .zone-head { gap: 5px; flex-wrap: wrap; font-size: 12px; }
 .hands.multi .result { font-size: 11px; padding: 1px 5px; }
+
+/* Cards sit on the right-hand side of the table */
+.dealer .zone-head, .hand .zone-head { justify-content: flex-end; }
+.cards { justify-content: flex-end; padding-left: 0; padding-right: 2px; }
+.hands { justify-content: flex-end; }
+
+/* ---------- betting ---------- */
+.chips[hidden], .actions[hidden] { display: none; }
+.betline { text-align: center; font-size: 14px; color: var(--muted); margin-bottom: 6px; }
+.betline b { color: var(--gold); font-size: 17px; }
+.chip-row { display: flex; gap: 8px; justify-content: center; align-items: center; }
+.chip {
+  width: 54px; height: 54px; border-radius: 50%; flex: none;
+  font-weight: 800; font-size: 15px; color: #fff;
+  border: 4px dashed rgba(255, 255, 255, 0.75);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4), inset 0 0 0 3px rgba(0, 0, 0, 0.18);
+}
+.chip:active { transform: translateY(2px); box-shadow: none; }
+.chip:disabled { opacity: 0.3; }
+.chip.c5 { background: #c8202b; }
+.chip.c25 { background: #1f8a4c; }
+.chip.c100 { background: #1b1b1b; }
+.chip.c500 { background: #6b3fa0; }
+.chip-clear { min-height: 48px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); font-weight: 600; }
+.chip-clear.rebuy { background: var(--gold); color: #2a1d00; border: 0; }
+.total.bet { color: var(--gold); }
+.mini-select { min-height: 36px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); font-size: 15px; padding: 0 8px; }
